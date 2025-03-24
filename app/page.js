@@ -1,103 +1,381 @@
-import Image from "next/image";
+"use client";
+import React, { useEffect, useState } from "react";
+//components
+import {
+  Table,
+  Button,
+  Form,
+  Input,
+  DatePicker,
+  Modal,
+  Dropdown,
+  Select,
+} from "antd";
+
+//date & time
+import dayjs from "dayjs";
+
+// dayjs.extend(utc);
+// dayjs.extend(timezone);
+
+//
+import axios from "axios";
+import { render } from "@testing-library/react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [OpenCreate, setOpenCreate] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // data Emp
+  const [employeeData, setEmployeeData] = useState([]);
+
+  //loading
+  const [loading, setLoading] = useState(true);
+
+  const [formData, setFormData] = useState();
+  const [form] = Form.useForm();
+
+  //edit form
+  const [OpenEdit, setOpenEdit] = useState(false);
+  const [selectEmp, setSelectEmp] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const DataEmp = await axios.get(
+          "https://organize-dev.allkons.com/org-center-sv/api/test-frontend"
+        );
+        const fetchFinal = DataEmp.data.data;
+        console.log("Data Employee : ", fetchFinal);
+        setEmployeeData(fetchFinal);
+      } catch (error) {
+        console.log("Error Fetch Data : ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const columns = [
+    {
+      title: "Code",
+      dataIndex: "code",
+      key: "code",
+    },
+    {
+      title: "Name",
+      dataIndex: "first_name",
+      key: "first_name",
+    },
+    {
+      title: "Lastname",
+      dataIndex: "last_name",
+      key: "last_name",
+    },
+    {
+      title: "Position",
+      dataIndex: "position_name",
+      key: "position_name",
+    },
+    {
+      title: "Phone",
+      dataIndex: "phone_no",
+      key: "phone_no",
+    },
+    {
+      title: "E-mail",
+      dataIndex: "email",
+      key: "email",
+    },
+    {
+      title: "Start Date",
+      dataIndex: "start_date",
+      key: "start_date",
+      // render: (_, record) => (
+      //   <>{dayjs(record.start_date)}</>
+      //   // .tz("Thailand/Bangkok")}
+      // ),
+    },
+    {
+      title: "Actions",
+      dataIndex: "action",
+      key: "action",
+      render: (_, record) => (
+        <>
+          <Button
+            onClick={
+              () => ShowEditModal(record)
+              // record.id
+            }
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            Edit
+          </Button>
+          <Button onClick={() => console.log("View ID: ", record.id)}>
+            View
+          </Button>
+        </>
+      ),
+    },
+  ];
+
+  const handleClose = () => {
+    form.resetFields();
+    setOpenCreate(false);
+  };
+
+  const onsubmit = async (value) => {
+    console.log("TEST submit : ", value);
+    try {
+      const respones = await axios.post(
+        "https://organize-dev.allkons.com/org-center-sv/api/test-frontend",
+        value,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      console.log("respones data : ", respones.data);
+
+      handleClose();
+    } catch (error) {
+      console.error("Error : ", error);
+    }
+  };
+
+  //edit
+  const ShowEditModal = (record) => {
+    setSelectEmp(record);
+    form.setFieldValue(record);
+    setOpenEdit(true);
+  };
+
+  const CloseEdit = () => {
+    form.resetFields;
+    setOpenEdit(false);
+  };
+
+  const handleEdit = async (value) => {
+    console.log("edit data : ", value);
+  };
+
+  return (
+    <>
+      <div>
+        <Button
+          onClick={() => {
+            setOpenCreate(true);
+          }}
+        >
+          Create
+        </Button>
+      </div>
+
+      {/* table Show data */}
+      <div>
+        <Table dataSource={employeeData} columns={columns} loading={loading} />
+      </div>
+
+      {/* Modal Create Data */}
+
+      <Modal open={OpenCreate} onCancel={handleClose} footer={[]}>
+        <Form form={form} onFinish={onsubmit} layout="vertical">
+          <Form.Item
+            label="Code"
+            name="code"
+            rules={[
+              {
+                required: true,
+                message: "Please code!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Name"
+            name="first_name"
+            rules={[
+              {
+                required: true,
+                message: "Please Name!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Last Name"
+            name="last_name"
+            rules={[
+              {
+                required: true,
+                message: "Please !",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Position"
+            name="position_name"
+            rules={[
+              {
+                required: true,
+                // message: "Please position!",
+              },
+            ]}
+          >
+            <Select
+              options={[
+                { value: "Project Manager", label: "Project Manager" },
+                { value: "UX/UI", label: "UX/UI" },
+                { value: "System Analynst", label: "System Analynst" },
+                { value: "Software Developer", label: "Software Developer" },
+                { value: "Tester", label: "Tester" },
+              ]}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </Form.Item>
+          <Form.Item
+            label="E-mail"
+            name="email"
+            rules={[
+              {
+                required: true,
+                message: "Please email!",
+              },
+            ]}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Phone"
+            name="phone_no"
+            rules={[
+              {
+                required: true,
+                message: "Please phone!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Start Date"
+            name="start_date"
+            rules={[
+              {
+                required: true,
+                message: "Please startdate!",
+              },
+            ]}
+          >
+            <DatePicker />
+          </Form.Item>
+          <Form.Item>
+            <Button htmlType="submit">submit</Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal open={OpenEdit} onCancel={CloseEdit} footer={[]}>
+        <Form form={form} onFinish={handleEdit} layout="vertical">
+          <Form.Item
+            label="Code"
+            name="code"
+            rules={[
+              {
+                required: true,
+                message: "Please code!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Name"
+            name="first_name"
+            rules={[
+              {
+                required: true,
+                message: "Please Name!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Last Name"
+            name="last_name"
+            rules={[
+              {
+                required: true,
+                message: "Please !",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Position"
+            name="position_name"
+            rules={[
+              {
+                required: true,
+                // message: "Please position!",
+              },
+            ]}
+          >
+            <Select
+              options={[
+                { value: "Project Manager", label: "Project Manager" },
+                { value: "UX/UI", label: "UX/UI" },
+                { value: "System Analynst", label: "System Analynst" },
+                { value: "Software Developer", label: "Software Developer" },
+                { value: "Tester", label: "Tester" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item
+            label="E-mail"
+            name="email"
+            rules={[
+              {
+                required: true,
+                message: "Please email!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Phone"
+            name="phone_no"
+            rules={[
+              {
+                required: true,
+                message: "Please phone!",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Start Date"
+            name="start_date"
+            rules={[
+              {
+                required: true,
+                message: "Please startdate!",
+              },
+            ]}
+          >
+            <DatePicker />
+          </Form.Item>
+          <Form.Item>
+            <Button htmlType="submit">submit</Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
   );
 }
