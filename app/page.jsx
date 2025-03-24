@@ -14,9 +14,11 @@ import {
 
 //date & time
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
-// dayjs.extend(utc);
-// dayjs.extend(timezone);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 //
 import axios from "axios";
@@ -38,22 +40,26 @@ export default function Home() {
   const [OpenEdit, setOpenEdit] = useState(false);
   const [selectEmp, setSelectEmp] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const DataEmp = await axios.get(
-          "https://organize-dev.allkons.com/org-center-sv/api/test-frontend"
-        );
-        const fetchFinal = DataEmp.data.data;
-        console.log("Data Employee : ", fetchFinal);
-        setEmployeeData(fetchFinal);
-      } catch (error) {
-        console.log("Error Fetch Data : ", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //delete
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
+  const fetchData = async () => {
+    try {
+      const DataEmp = await axios.get(
+        "https://organize-dev.allkons.com/org-center-sv/api/test-frontend"
+      );
+      const fetchFinal = DataEmp.data.data;
+      console.log("Data Employee : ", fetchFinal);
+      setEmployeeData(fetchFinal);
+    } catch (error) {
+      console.log("Error Fetch Data : ", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -92,10 +98,8 @@ export default function Home() {
       title: "Start Date",
       dataIndex: "start_date",
       key: "start_date",
-      // render: (_, record) => (
-      //   <>{dayjs(record.start_date)}</>
-      //   // .tz("Thailand/Bangkok")}
-      // ),
+      render: (_, record) =>
+        dayjs(record.start_date).tz("Asia/Bangkok").format("YYYY-MM-DD"),
     },
     {
       title: "Actions",
@@ -111,9 +115,7 @@ export default function Home() {
           >
             Edit
           </Button>
-          <Button onClick={() => console.log("View ID: ", record.id)}>
-            View
-          </Button>
+          <Button onClick={() => showDeleteModal(record.id)}>Delete</Button>
         </>
       ),
     },
@@ -137,6 +139,7 @@ export default function Home() {
       console.log("respones data : ", respones.data);
 
       handleClose();
+      fetchData();
     } catch (error) {
       console.error("Error : ", error);
     }
@@ -145,17 +148,67 @@ export default function Home() {
   //edit
   const ShowEditModal = (record) => {
     setSelectEmp(record);
-    form.setFieldValue(record);
+    form.setFieldsValue({
+      ...record,
+      start_date: record.start_date ? dayjs(record.start_date) : null,
+    });
     setOpenEdit(true);
   };
 
   const CloseEdit = () => {
-    form.resetFields;
+    form.resetFields();
+    setSelectEmp(null);
     setOpenEdit(false);
   };
 
-  const handleEdit = async (value) => {
-    console.log("edit data : ", value);
+  const handleEdit = async (values) => {
+    if (!selectEmp) return;
+
+    try {
+      const response = await axios.patch(
+        `https://organize-dev.allkons.com/org-center-sv/api/test-frontend/${selectEmp.id}`,
+        values,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      console.log("Edit Response:", response.data);
+
+      // ปิด Modal และรีเฟรชข้อมูล
+      CloseEdit();
+      form.resetFields();
+      setSelectEmp(null);
+      fetchData(); // โหลดข้อมูลใหม่
+    } catch (error) {
+      console.error("Error updating data:", error);
+    }
+  };
+
+  //delete
+  const showDeleteModal = (id) => {
+    setDeleteId(id);
+    setOpenDelete(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setOpenDelete(false);
+    setDeleteId(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteId) return;
+
+    try {
+      await axios.delete(
+        `https://organize-dev.allkons.com/org-center-sv/api/test-frontend/${deleteId}`
+      );
+      fetchData();
+      setOpenDelete(false);
+      setDeleteId(null);
+    } catch (error) {
+      console.error("Error deleting data:", error.response?.data || error);
+    }
   };
 
   return (
@@ -375,6 +428,23 @@ export default function Home() {
             <Button htmlType="submit">submit</Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Modal Delete */}
+      <Modal
+        open={openDelete}
+        title="Are you sure?"
+        onCancel={handleDeleteCancel}
+        footer={[
+          <Button key="cancel" onClick={handleDeleteCancel}>
+            No
+          </Button>,
+          <Button key="confirm" type="primary" onClick={handleDeleteConfirm}>
+            Yes
+          </Button>,
+        ]}
+      >
+        <p>Do you want to delete this employee?</p>
       </Modal>
     </>
   );
